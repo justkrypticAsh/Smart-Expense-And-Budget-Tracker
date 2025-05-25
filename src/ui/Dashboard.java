@@ -1,72 +1,180 @@
 package ui;
 
 import models.Expense;
+import models.User;
 import services.ExpenseService;
+import services.UserService;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.PiePlot;
+import org.jfree.data.general.DefaultPieDataset;
+
 import java.awt.*;
+import java.util.Calendar;
 import java.util.List;
 
 public class Dashboard extends JFrame {
     private int userId;
     private ExpenseService expenseService;
+    private UserService userService;
+
     private JTable expenseTable;
     private DefaultTableModel tableModel;
+    private JLabel budgetLabel;
+    private JLabel totalExpenseLabel;
 
-    public Dashboard(int userId) {
-        super("Dashboard");
+    private JPanel chartContainer;
+    private ChartPanel chartPanel;
+
+    public Dashboard(int userId, ExpenseService expenseService, UserService userService) {
         this.userId = userId;
-        this.expenseService = new ExpenseService();
+        this.expenseService = expenseService;
+        this.userService = userService;
 
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(700, 500);
+        setTitle("Dashboard");
+        setSize(900, 500);
         setLocationRelativeTo(null);
-        setLayout(new BorderLayout());
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // Table Setup
-        String[] columns = {"ID", "Amount", "Category", "Date", "Note"};
-        tableModel = new DefaultTableModel(columns, 0);
+        JPanel mainPanel = new JPanel(new BorderLayout());
+
+        tableModel = new DefaultTableModel(new Object[]{"ID", "Amount", "Category", "Date", "Note"}, 0);
         expenseTable = new JTable(tableModel);
-        JScrollPane scrollPane = new JScrollPane(expenseTable);
-        add(scrollPane, BorderLayout.CENTER);
 
-        // Button Panel
+        JPanel infoPanel = new JPanel(new GridLayout(1, 2));
+        budgetLabel = new JLabel();
+        totalExpenseLabel = new JLabel();
+        infoPanel.add(budgetLabel);
+        infoPanel.add(totalExpenseLabel);
+
+        mainPanel.add(infoPanel, BorderLayout.NORTH);
+        mainPanel.add(new JScrollPane(expenseTable), BorderLayout.CENTER);
+
         JPanel buttonPanel = new JPanel();
-        JButton addExpenseBtn = new JButton("Add Expense");
-        JButton logoutBtn = new JButton("Logout");
 
-        buttonPanel.add(addExpenseBtn);
-        buttonPanel.add(logoutBtn);
-        add(buttonPanel, BorderLayout.SOUTH);
-
-        // Load expenses on startup
-        loadExpenses();
-
-        // Button Actions
-        addExpenseBtn.addActionListener(e -> {
-            new AddExpenseScreen(userId, this).setVisible(true);
-        });
-
-        logoutBtn.addActionListener(e -> {
+        JButton addExpenseButton = new JButton("Add Expense");
+        addExpenseButton.addActionListener(e -> {
             dispose();
-            new LoginScreen().setVisible(true);
+            new AddExpenseScreen(userId, expenseService, userService).setVisible(true);
         });
+        buttonPanel.add(addExpenseButton);
+
+        JButton setBudgetButton = new JButton("Set Monthly Budget");
+        setBudgetButton.addActionListener(e -> {
+            String input = JOptionPane.showInputDialog(this, "Enter Monthly Budget:");
+            if (input != null) {
+                try {
+                    double budget = Double.parseDouble(input);
+                    User user = getCurrentUser();
+                    if (user != null) {
+                        user.setMonthlyBudget(budget);
+                        JOptionPane.showMessageDialog(this, "Monthly budget updated.");
+                        updateBudgetInfo();
+                        updateChart();
+                    }
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Invalid amount.");
+                }
+            }
+        });
+        buttonPanel.add(setBudgetButton);
+
+        JButton logoutButton = new JButton("Logout");
+        logoutButton.addActionListener(e -> {
+            dispose();
+            new LoginScreen(userService).setVisible(true);
+        });
+        buttonPanel.add(logoutButton);
+
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        chartContainer = new JPanel(new BorderLayout());
+        mainPanel.add(chartContainer, BorderLayout.EAST);
+
+        add(mainPanel);
+
+        createChartPanel();  // create chartPanel first
+        loadExpenses();      // then load expenses (which calls updateChart())
     }
 
-    public void loadExpenses() {
+    private void loadExpenses() {
         List<Expense> expenses = expenseService.getExpensesByUser(userId);
-        tableModel.setRowCount(0);  // Clear existing
-
-        for (Expense exp : expenses) {
-            Object[] row = {
-                exp.getId(),
-                exp.getAmount(),
-                exp.getCategory(),
-                exp.getDate(),
-                exp.getNote()
-            };
-            tableModel.addRow(row);
+        tableModel.setRowCount(0);
+        for (Expense e : expenses) {
+            tableModel.addRow(new Object[]{
+                    e.getId(),
+                    e.getAmount(),
+                    e.getCategory(),
+                    e.getDate(),
+                    e.getNote()
+            });
         }
+        updateBudgetInfo();
+        updateChart();
+    }
+
+    private void updateBudgetInfo() {
+        User user = getCurrentUser();
+        if (user != null) {
+            double budget = user.getMonthlyBudget();
+
+            Calendar cal = Calendar.getInstance();
+            int year = cal.get(Calendar.YEAR);
+            int month = cal.get(Calendar.MONTH) + 1;
+
+            double totalExpense = expenseService.getTotalExpenseForMonth(userId, year, month);
+            budgetLabel.setText("Monthly Budget: " + (budget > 0 ? budget : "Not Set"));
+            totalExpenseLabel.setText("Total Expenses This Month: " + totalExpense);
+        }
+    }
+
+    private User getCurrentUser() {
+        for (User u : userService.getUsers()) {
+            if (u.getId() == userId) {
+                return u;
+            }
+        }
+        return null;
+    }
+
+    private void createChartPanel() {
+        DefaultPieDataset dataset = createDataset();
+        JFreeChart chart = ChartFactory.createPieChart("Budget vs Expenses", dataset, true, true, false);
+        chartPanel = new ChartPanel(chart);
+        chartPanel.setPreferredSize(new Dimension(300, 300));
+        chartContainer.add(chartPanel, BorderLayout.CENTER);
+        chartContainer.revalidate();
+        chartContainer.repaint();
+    }
+
+    private DefaultPieDataset createDataset() {
+        DefaultPieDataset dataset = new DefaultPieDataset();
+        User user = getCurrentUser();
+        if (user != null) {
+            double budget = user.getMonthlyBudget();
+
+            Calendar cal = Calendar.getInstance();
+            int year = cal.get(Calendar.YEAR);
+            int month = cal.get(Calendar.MONTH) + 1;
+
+            double expenses = expenseService.getTotalExpenseForMonth(userId, year, month);
+            double remaining = budget - expenses;
+            if (remaining < 0) remaining = 0;
+
+            dataset.setValue("Expenses", expenses);
+            dataset.setValue("Remaining Budget", remaining);
+        }
+        return dataset;
+    }
+
+    private void updateChart() {
+        DefaultPieDataset dataset = createDataset();
+        PiePlot plot = (PiePlot) chartPanel.getChart().getPlot();
+        plot.setDataset(dataset);
     }
 }

@@ -1,69 +1,69 @@
 package ui;
 
-import services.UserService;
-
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.*;
+import services.UserService;
+import services.ExpenseService;
 
 public class LoginScreen extends JFrame {
     private JTextField emailField;
     private JPasswordField passwordField;
+    private JButton loginButton;
+    private JButton signupButton;
+
     private UserService userService;
+    private ExpenseService expenseService;
 
-    public LoginScreen() {
-        super("Login");
-        userService = new UserService();
+    public LoginScreen(UserService userService) {
+        this.userService = userService;
+        this.expenseService = ExpenseService.getInstance();
 
+        setTitle("Login");
+        setSize(300, 200);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(400, 250);
-        setLocationRelativeTo(null);
-        setLayout(new BorderLayout());
+        setLayout(null);
 
-        JPanel panel = new JPanel(new GridLayout(3, 2, 10, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(30, 30, 10, 30));
+        JLabel emailLabel = new JLabel("Email:");
+        emailLabel.setBounds(10, 20, 80, 25);
+        add(emailLabel);
 
-        panel.add(new JLabel("Email:"));
         emailField = new JTextField();
-        panel.add(emailField);
+        emailField.setBounds(100, 20, 160, 25);
+        add(emailField);
 
-        panel.add(new JLabel("Password:"));
+        JLabel passwordLabel = new JLabel("Password:");
+        passwordLabel.setBounds(10, 60, 80, 25);
+        add(passwordLabel);
+
         passwordField = new JPasswordField();
-        panel.add(passwordField);
+        passwordField.setBounds(100, 60, 160, 25);
+        add(passwordField);
 
-        JButton loginButton = new JButton("Login");
-        JButton signupButton = new JButton("Signup");
+        loginButton = new JButton("Login");
+        loginButton.setBounds(100, 100, 80, 25);
+        add(loginButton);
 
-        panel.add(loginButton);
-        panel.add(signupButton);
+        signupButton = new JButton("Signup");
+        signupButton.setBounds(190, 100, 80, 25);
+        add(signupButton);
 
-        add(panel, BorderLayout.CENTER);
+        loginButton.addActionListener(e -> {
+            String email = emailField.getText().trim();
+            String password = new String(passwordField.getPassword());
 
-        // Actions
-        loginButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                String email = emailField.getText();
-                String password = new String(passwordField.getPassword());
-
-                int userId = userService.login(email, password);
-                if (userId != -1) {
-                    JOptionPane.showMessageDialog(LoginScreen.this, "Login successful!");
-                    dispose();
-                    new Dashboard(userId).setVisible(true);  // Create this class next
-                } else {
-                    JOptionPane.showMessageDialog(LoginScreen.this, "Invalid credentials.", "Error", JOptionPane.ERROR_MESSAGE);
-                }
+            int userId = userService.login(email, password);
+            if (userId != -1) {
+                JOptionPane.showMessageDialog(null, "Login successful!");
+                dispose();
+                SwingUtilities.invokeLater(() -> new Dashboard(userId, expenseService, userService).setVisible(true));
+            } else {
+                JOptionPane.showMessageDialog(null, "Invalid credentials.");
             }
         });
 
         signupButton.addActionListener(e -> {
             dispose();
-            new SignupScreen().setVisible(true);  // Create this class next
+            new SignupScreen(userService).setVisible(true);
         });
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new LoginScreen().setVisible(true));
     }
 }

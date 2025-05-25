@@ -6,16 +6,14 @@ import java.util.List;
 
 public class TestUserService {
     public static void main(String[] args) {
-        UserService userService = new UserService();
+        UserService userService = UserService.getInstance();
 
-        // Add a new user
-        User newUser = new User(0, "testuser", "testpassword");
-        userService.addUser(newUser);
+        userService.register("testuser", "testuser@example.com", "testpassword");
 
-        // Fetch all users and print
-        List<User> users = userService.getAllUsers();
+        List<User> users = userService.getUsers();
+
         for (User user : users) {
-            System.out.println("ID: " + user.getId() + ", Username: " + user.getUsername());
+            System.out.println("ID: " + user.getId() + ", Name: " + user.getName() + ", Email: " + user.getEmail());
         }
     }
 }

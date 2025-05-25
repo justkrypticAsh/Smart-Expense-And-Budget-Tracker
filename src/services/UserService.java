@@ -1,60 +1,73 @@
 package services;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
-
-import database.DBConnection;
 import models.User;
 
-public class UserService {
+public class UserService implements Serializable {
+    private static final long serialVersionUID = 1L;
+    private static UserService instance;
+    private List<User> users;
+    private int nextId;
+    private static final String DATA_FILE = "users.dat";
 
-    public void addUser(User user) {
-        String sql = "INSERT INTO users (username, password) VALUES (?, ?)";
+    private UserService() {
+        users = new ArrayList<>();
+        nextId = 1;
+        loadFromFile();
+    }
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+    public static UserService getInstance() {
+        if (instance == null) {
+            instance = new UserService();
+        }
+        return instance;
+    }
 
-            stmt.setString(1, user.getUsername());
-            stmt.setString(2, user.getPassword());
-
-            int rowsInserted = stmt.executeUpdate();
-
-            if (rowsInserted > 0) {
-                System.out.println("User added successfully.");
+    public boolean register(String name, String email, String password) {
+        for (User u : users) {
+            if (u.getEmail().equals(email)) {
+                return false;
             }
+        }
+        User newUser = new User(nextId++, name, email, password, 0.0);
+        users.add(newUser);
+        saveToFile();
+        return true;
+    }
 
-        } catch (SQLException e) {
-            System.err.println("Error adding user.");
+    public int login(String email, String password) {
+        for (User u : users) {
+            if (u.getEmail().equals(email) && u.getPassword().equals(password)) {
+                return u.getId();
+            }
+        }
+        return -1;
+    }
+
+    public List<User> getUsers() {
+        return users;
+    }
+
+    private void saveToFile() {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(DATA_FILE))) {
+            oos.writeObject(users);
+            oos.writeInt(nextId);
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public List<User> getAllUsers() {
-        List<User> users = new ArrayList<>();
-        String sql = "SELECT id, username, password FROM users";
-
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                int id = rs.getInt("id");
-                String username = rs.getString("username");
-                String password = rs.getString("password");
-
-                User user = new User(id, username, password);
-                users.add(user);
-            }
-
-        } catch (SQLException e) {
-            System.err.println("Error fetching users.");
+    @SuppressWarnings("unchecked")
+    private void loadFromFile() {
+        File file = new File(DATA_FILE);
+        if (!file.exists()) return;
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+            users = (List<User>) ois.readObject();
+            nextId = ois.readInt();
+        } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
-
-        return users;
     }
 }

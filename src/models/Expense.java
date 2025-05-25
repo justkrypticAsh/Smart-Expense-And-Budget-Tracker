@@ -20,10 +20,13 @@ public class Expense {
     }
 
     public Expense(int userId, double amount, String category, Date date, String note) {
-        this(-1, userId, amount, category, date, note);
+        this.id = -1;
+        this.userId = userId;
+        this.amount = amount;
+        this.category = category;
+        this.date = date;
+        this.note = note;
     }
-
-    // Getters and setters...
 
     public int getId() {
         return id;

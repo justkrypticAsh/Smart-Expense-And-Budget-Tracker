@@ -1,79 +1,68 @@
 package ui;
 
-import models.User;
-import services.UserService;
-
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.*;
+import services.UserService;
 
 public class SignupScreen extends JFrame {
     private JTextField nameField;
     private JTextField emailField;
     private JPasswordField passwordField;
+    private JButton signupButton;
+
     private UserService userService;
 
-    public SignupScreen() {
-        super("Signup");
-        userService = new UserService();
+    public SignupScreen(UserService userService) {
+        this.userService = userService;
 
+        setTitle("Signup");
+        setSize(300, 200);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(400, 300);
-        setLocationRelativeTo(null);
-        setLayout(new BorderLayout());
+        setLayout(null);
 
-        JPanel panel = new JPanel(new GridLayout(4, 2, 10, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(30, 30, 10, 30));
+        JLabel nameLabel = new JLabel("Name:");
+        nameLabel.setBounds(10, 10, 80, 25);
+        add(nameLabel);
 
-        panel.add(new JLabel("Name:"));
         nameField = new JTextField();
-        panel.add(nameField);
+        nameField.setBounds(100, 10, 160, 25);
+        add(nameField);
 
-        panel.add(new JLabel("Email:"));
+        JLabel emailLabel = new JLabel("Email:");
+        emailLabel.setBounds(10, 40, 80, 25);
+        add(emailLabel);
+
         emailField = new JTextField();
-        panel.add(emailField);
+        emailField.setBounds(100, 40, 160, 25);
+        add(emailField);
 
-        panel.add(new JLabel("Password:"));
+        JLabel passwordLabel = new JLabel("Password:");
+        passwordLabel.setBounds(10, 70, 80, 25);
+        add(passwordLabel);
+
         passwordField = new JPasswordField();
-        panel.add(passwordField);
+        passwordField.setBounds(100, 70, 160, 25);
+        add(passwordField);
 
-        JButton signupButton = new JButton("Signup");
-        JButton backButton = new JButton("Back to Login");
+        signupButton = new JButton("Sign Up");
+        signupButton.setBounds(100, 110, 100, 25);
+        add(signupButton);
 
-        panel.add(signupButton);
-        panel.add(backButton);
-
-        add(panel, BorderLayout.CENTER);
-
-        // Actions
         signupButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 String name = nameField.getText().trim();
                 String email = emailField.getText().trim();
                 String password = new String(passwordField.getPassword());
 
-                if (name.isEmpty() || email.isEmpty() || password.isEmpty()) {
-                    JOptionPane.showMessageDialog(SignupScreen.this, "All fields are required.", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                User user = new User(name, email, password);
-                boolean success = userService.register(user);
-
+                boolean success = userService.register(name, email, password);
                 if (success) {
-                    JOptionPane.showMessageDialog(SignupScreen.this, "Registration successful! Please login.");
+                    JOptionPane.showMessageDialog(null, "User registered successfully!");
                     dispose();
-                    new LoginScreen().setVisible(true);
+                    new LoginScreen(userService).setVisible(true);
                 } else {
-                    JOptionPane.showMessageDialog(SignupScreen.this, "Registration failed. Email may already be in use.", "Error", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(null, "Registration failed. Email may already be used.");
                 }
             }
-        });
-
-        backButton.addActionListener(e -> {
-            dispose();
-            new LoginScreen().setVisible(true);
         });
     }
 }
