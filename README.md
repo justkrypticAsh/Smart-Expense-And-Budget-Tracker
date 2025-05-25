@@ -77,9 +77,14 @@ java -cp out Main
 
 ## **Screenshots**
 
-*(Add screenshots of your login screen, dashboard, pie chart, etc. here if available)*
+### Login Page  
+![Login Page](screenshot/LoginPage.png)
 
----
+### Sign Up Page  
+![Sign Up Page](screenshot/SignUpPage.png)
+
+### Dashboard  
+![Dashboard](screenshot/Dashboard.png)
 
 ## **Contributors**
 
