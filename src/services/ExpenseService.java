@@ -1,11 +1,12 @@
 package services;
 
-import models.Expense;
-import util.DatabaseConnector;
-
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import models.Expense;
+import util.DatabaseConnector;
 
 public class ExpenseService {
     private static ExpenseService instance;
@@ -80,5 +81,20 @@ public class ExpenseService {
             e.printStackTrace();
         }
         return total;
+    }
+
+    public Map<String, Double> getTotalByCategory(int userId) {
+        Map<String, Double> categoryTotals = new HashMap<>();
+        String query = "SELECT category, SUM(amount) AS total FROM expenses WHERE user_id = ? GROUP BY category";
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, userId);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                categoryTotals.put(rs.getString("category"), rs.getDouble("total"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return categoryTotals;
     }
 }

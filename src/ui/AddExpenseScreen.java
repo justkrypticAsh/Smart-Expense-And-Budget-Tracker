@@ -1,12 +1,11 @@
 package ui;
 
+import java.awt.*;
+import java.util.Date;
+import javax.swing.*;
 import models.Expense;
 import services.ExpenseService;
 import services.UserService;
-
-import javax.swing.*;
-import java.awt.*;
-import java.util.Date;
 
 public class AddExpenseScreen extends JFrame {
     private int userId;
@@ -48,13 +47,32 @@ public class AddExpenseScreen extends JFrame {
         JButton addButton = new JButton("Add Expense");
         addButton.addActionListener(e -> {
             try {
-                double amount = Double.parseDouble(amountField.getText());
-                String category = categoryField.getText();
+                String amountText = amountField.getText().trim();
+                String category = categoryField.getText().trim();
+                String note = noteField.getText().trim();
                 Date date = (Date) dateSpinner.getValue();
-                String note = noteField.getText();
+
+                if (amountText.isEmpty() || category.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Amount and Category are required fields.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+
+                double amount = Double.parseDouble(amountText);
+                if (amount <= 0) {
+                    JOptionPane.showMessageDialog(this, "Amount must be greater than zero.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
 
                 Expense expense = new Expense(userId, amount, category, date, note);
-                boolean success = expenseService.addExpense(expense);
+
+                boolean success;
+                try {
+                    success = expenseService.addExpense(expense);
+                } catch (Exception dbEx) {
+                    JOptionPane.showMessageDialog(this, "Database error: " + dbEx.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
                 if (success) {
                     JOptionPane.showMessageDialog(this, "Expense added successfully.");
                     dispose();
@@ -62,8 +80,9 @@ public class AddExpenseScreen extends JFrame {
                 } else {
                     JOptionPane.showMessageDialog(this, "Failed to add expense.");
                 }
+
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Invalid amount.");
+                JOptionPane.showMessageDialog(this, "Invalid amount format. Please enter a valid number.", "Input Error", JOptionPane.ERROR_MESSAGE);
             }
         });
         add(addButton);
